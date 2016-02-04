@@ -57,15 +57,12 @@ let createPools listenSocket logger maxOps bufferSize autoGrow =
   let transportPool = new ConcurrentPool<TcpTransport>()
   transportPool.ObjectGenerator <- (fun _ -> createTransport transportPool listenSocket)
 
-  let bufferManager = new BufferManager(bufferSize * (maxOps + 1), bufferSize, logger, autoGrow)
-  bufferManager.Init()
-
   //Pre-allocate a set of reusable transportObjects
   for x = 0 to maxOps - 1 do
     let transport = createTransport transportPool listenSocket
     transportPool.Push transport
 
-  (transportPool, bufferManager)
+  transportPool
 
 // NOTE: performance tip, on mono set nursery-size with a value larger than MAX_CONCURRENT_OPS * BUFFER_SIZE
 // i.e: export MONO_GC_PARAMS=nursery-size=128m
@@ -127,7 +124,9 @@ let runServer logger maxConcurrentOps bufferSize autoGrow (binding: SocketBindin
     let listenSocket = new Socket(binding.endpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
     listenSocket.NoDelay <- true;
 
-    let transportPool, bufferManager = createPools listenSocket logger maxConcurrentOps bufferSize autoGrow
+    let transportPool = createPools listenSocket logger maxConcurrentOps bufferSize autoGrow
+    let bufferManager = new BufferManager(bufferSize * (maxConcurrentOps + 1), bufferSize, logger, autoGrow)
+    bufferManager.Init()
 
     aFewTimes (fun () -> listenSocket.Bind binding.endpoint)
     listenSocket.Listen MaxBacklog
