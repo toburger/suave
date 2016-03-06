@@ -25,6 +25,9 @@ module BufferSegment =
     #endif
     new BufferSegment(buffer, offset, length)
 
+  let inline toArraySegment (b: BufferSegment) =
+    ArraySegment(b.buffer.Array, b.offset, b.length)
+
 module internal Bytes =
 
   // for ci in (int '!')..(int '~') do printfn "%c" (char ci);;
@@ -129,9 +132,9 @@ module internal Bytes =
       done;
       if !j >= m then Some(!i - m) else None
 
-  let inline _kmpZ (p: byte []) (next: int []) m (xs : BufferSegment list) =
-      let a = uniteArrayBufferSegment xs
-      let n = List.fold (fun acc (x :  BufferSegment) -> acc + x.length) 0 xs
+  let inline _kmpZ (p: byte []) (next: int []) m (xs : BufferSegment seq) =
+      let a = uniteArrayBufferSegment (Seq.toList xs)
+      let n = Seq.fold (fun acc (x :  BufferSegment) -> acc + x.length) 0 xs
       let  i = ref 0
       let j = ref 0 in
       while !j < m && !i < n do
@@ -140,7 +143,7 @@ module internal Bytes =
       done;
       if !j >= m then Some(!i - m) else None
 
-  let kmpZ p (xs : BufferSegment list) =
+  let kmpZ p (xs : BufferSegment seq) =
     let next = initNext p
     let m = Array.length p
     _kmpZ p next m xs
