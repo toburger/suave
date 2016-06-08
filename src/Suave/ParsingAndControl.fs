@@ -484,6 +484,13 @@ module internal ParsingAndControl =
       let! _ = run ctx <| Intermediate.CONTINUE
       verbose "sent 100-continue response"
 
+    match request.headers %% "content-encoding" with
+    | Choice1Of2 contentEncoding ->
+        let body = sprintf "Content-Encoding '%s' not supported by the server" contentEncoding
+        let! _ = run ctx <| RequestErrors.UNSUPPORTED_MEDIA_TYPE body
+        verbose "sent 415-unsupported media type"
+    | _ -> ()
+
     if ctx.runtime.parsePostData then
       verbose "parsing post data"
       return! parsePostData { ctx with request = request; connection = connection'' }
